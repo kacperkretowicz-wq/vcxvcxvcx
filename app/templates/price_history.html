@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Historia ceny{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Historia ceny</h1>
+  <a href="javascript:history.back()">← Wróć</a>
+</div>
+<p class="muted">{{ offer_key }}</p>
+<table>
+  <thead><tr><th>Data odczytu</th><th>Cena/os (PLN)</th></tr></thead>
+  <tbody>
+    {% for checked_at, price in history %}
+    <tr><td>{{ checked_at }}</td><td>{{ price }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

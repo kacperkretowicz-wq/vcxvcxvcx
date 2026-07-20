@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Okazje{% endblock %}
+{% block content %}
+<h1>Wykryte okazje</h1>
+
+{% if not deals %}
+<p class="empty">Brak wykrytych okazji jeszcze.</p>
+{% else %}
+<table>
+  <thead>
+    <tr>
+      <th>Profil</th>
+      <th>Hotel</th>
+      <th>Termin</th>
+      <th>Cena/os</th>
+      <th>Powód</th>
+      <th>Szczegóły</th>
+      <th>Wykryto</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for deal in deals %}
+    <tr>
+      <td>{{ deal.profile_name }}</td>
+      <td>{{ deal.hotel_name }}</td>
+      <td>{{ deal.date_start }} – {{ deal.date_end }}</td>
+      <td>{{ deal.current_price_per_person }} PLN</td>
+      <td><span class="badge badge-reason">{{ reason_labels.get(deal.reason, deal.reason) }}</span></td>
+      <td>{{ deal.detail }}</td>
+      <td>{{ deal.detected_at }}</td>
+      <td><a href="{{ deal.url }}" target="_blank" rel="noopener">Otwórz</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Status scraperów{% endblock %}
+{% block content %}
+<h1>Status scraperów</h1>
+
+{% if not health %}
+<p class="empty">Brak jeszcze żadnych danych o scraperach — poczekaj na pierwszy cykl sprawdzania.</p>
+{% else %}
+<table>
+  <thead>
+    <tr>
+      <th>Źródło</th>
+      <th>Ostatni sukces</th>
+      <th>Ostatni błąd</th>
+      <th>Treść błędu</th>
+      <th>Awarie z rzędu</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in health %}
+    <tr class="{{ 'row-unhealthy' if row.consecutive_failures >= 5 else '' }}">
+      <td>{{ row.source }}</td>
+      <td>{{ row.last_success or "—" }}</td>
+      <td>{{ row.last_error or "—" }}</td>
+      <td>{{ row.last_error_message or "—" }}</td>
+      <td>{{ row.consecutive_failures }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

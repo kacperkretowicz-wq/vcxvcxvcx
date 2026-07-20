@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{% if profile %}Edytuj profil{% else %}Nowy profil{% endif %} — Tracker Okazji Wakacyjnych{% endblock %}
+{% block content %}
+<h1>{% if profile %}Edytuj profil: {{ profile.name }}{% else %}Nowy profil{% endif %}</h1>
+
+<form method="post" action="{% if profile %}/profiles/{{ profile.id }}{% else %}/profiles{% endif %}" class="form-grid">
+  <label>Nazwa profilu
+    <input type="text" name="name" required value="{{ profile.name if profile else '' }}">
+  </label>
+
+  <label>Kraj
+    <select name="country" required>
+      {% for c in countries %}
+      <option value="{{ c }}" {% if profile and profile.country == c %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>Region (opcjonalnie)
+    <input type="text" name="region" placeholder="np. Kreta" value="{{ profile.region if profile and profile.region else '' }}">
+  </label>
+
+  <label>Wylot od
+    <input type="date" name="date_from" required value="{{ profile.date_from if profile else '' }}">
+  </label>
+
+  <label>Wylot do
+    <input type="date" name="date_to" required value="{{ profile.date_to if profile else '' }}">
+  </label>
+
+  <label>Długość pobytu od (noce)
+    <input type="number" name="duration_min" min="1" value="{{ profile.duration_min if profile else 6 }}">
+  </label>
+
+  <label>Długość pobytu do (noce)
+    <input type="number" name="duration_max" min="1" value="{{ profile.duration_max if profile else 8 }}">
+  </label>
+
+  <label>Dorośli
+    <input type="number" name="adults" min="1" value="{{ profile.adults if profile else 2 }}">
+  </label>
+
+  <label>Dzieci
+    <input type="number" name="children" min="0" value="{{ profile.children if profile else 0 }}">
+  </label>
+
+  <label>Wyżywienie
+    <select name="board">
+      <option value="">Dowolne</option>
+      {% for value, label in board_options %}
+      <option value="{{ value }}" {% if profile and profile.board == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>Lotnisko wylotu
+    <select name="departure_airport">
+      <option value="">Dowolne</option>
+      {% for a in airports %}
+      <option value="{{ a }}" {% if profile and profile.departure_airport == a %}selected{% endif %}>{{ a }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>Maks. cena za osobę (PLN)
+    <input type="number" name="max_price_per_person" min="0" placeholder="bez limitu" value="{{ profile.max_price_per_person if profile and profile.max_price_per_person else '' }}">
+  </label>
+
+  <label>Min. ocena hotelu (1–10)
+    <input type="number" step="0.1" name="min_hotel_rating" min="1" max="10" placeholder="dowolna" value="{{ profile.min_hotel_rating if profile and profile.min_hotel_rating else '' }}">
+  </label>
+
+  <label>Min. liczba gwiazdek
+    <input type="number" name="min_stars" min="1" max="5" placeholder="dowolna" value="{{ profile.min_stars if profile and profile.min_stars else '' }}">
+  </label>
+
+  <div class="form-actions">
+    <button type="submit">{% if profile %}Zapisz zmiany{% else %}Utwórz profil{% endif %}</button>
+    <a href="/">Anuluj</a>
+  </div>
+</form>
+{% endblock %}

@@ -18,26 +18,6 @@ MAX_CONSECUTIVE_FAILURES = 5
 STALE_OFFER_DAYS = 14
 
 
-def _profile_from_row(row: dict) -> SearchCriteria:
-    return SearchCriteria(
-        profile_id=row["id"],
-        name=row["name"],
-        country=row["country"],
-        region=row["region"],
-        date_from=row["date_from"],
-        date_to=row["date_to"],
-        duration_min=row["duration_min"],
-        duration_max=row["duration_max"],
-        adults=row["adults"],
-        children=row["children"],
-        board=row["board"],
-        max_price_per_person=row["max_price_per_person"],
-        min_hotel_rating=row["min_hotel_rating"],
-        min_stars=row["min_stars"],
-        departure_airport=row["departure_airport"],
-    )
-
-
 def _healthy_scrapers(db_path: str | None = None) -> dict:
     health = {row["source"]: row for row in db.get_scraper_health(db_path)}
     healthy = {}
@@ -102,7 +82,7 @@ async def run_all_searches(db_path: str | None = None) -> None:
     """Główne zadanie harmonogramu: dla każdego aktywnego profilu sprawdza
     wszystkie sprawne scrapery, zapisuje oferty, wykrywa okazje i wysyła
     powiadomienia."""
-    profiles = [_profile_from_row(row) for row in db.list_profiles(active_only=True, db_path=db_path)]
+    profiles = [SearchCriteria.from_row(row) for row in db.list_profiles(active_only=True, db_path=db_path)]
     logger.info("Start cyklu sprawdzania: %d aktywnych profili", len(profiles))
 
     for profile in profiles:
@@ -120,7 +100,7 @@ async def run_now(profile_id: int, db_path: str | None = None) -> None:
     row = db.get_profile(profile_id, db_path)
     if row is None:
         raise ValueError(f"Nie znaleziono profilu {profile_id}")
-    profile = _profile_from_row(row)
+    profile = SearchCriteria.from_row(row)
     await run_profile(profile, db_path)
     await notify.send_pending(db_path)
 

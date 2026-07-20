@@ -22,6 +22,26 @@ class SearchCriteria(BaseModel):
     min_stars: int | None = None
     departure_airport: str | None = None
 
+    @classmethod
+    def from_row(cls, row: dict) -> "SearchCriteria":
+        return cls(
+            profile_id=row["id"],
+            name=row["name"],
+            country=row["country"],
+            region=row["region"],
+            date_from=row["date_from"],
+            date_to=row["date_to"],
+            duration_min=row["duration_min"],
+            duration_max=row["duration_max"],
+            adults=row["adults"],
+            children=row["children"],
+            board=row["board"],
+            max_price_per_person=row["max_price_per_person"],
+            min_hotel_rating=row["min_hotel_rating"],
+            min_stars=row["min_stars"],
+            departure_airport=row["departure_airport"],
+        )
+
 
 class Offer(BaseModel):
     """Jedna oferta zwrócona przez scraper. Wszystkie scrapery zwracają TEN format."""

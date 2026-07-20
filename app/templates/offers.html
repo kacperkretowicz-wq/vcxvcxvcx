@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Wyniki — {{ profile.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Wyniki: {{ profile.name }}</h1>
+  <a href="/">← Wróć do profili</a>
+</div>
+
+{% if not offers %}
+<p class="empty">Brak ofert pasujących do tego profilu (jeszcze). Kliknij „Sprawdź teraz” na liście profili.</p>
+{% else %}
+<table>
+  <thead>
+    <tr>
+      <th>Hotel</th>
+      <th>⭐</th>
+      <th>Ocena</th>
+      <th>Termin</th>
+      <th>Wyżywienie</th>
+      <th>Wylot z</th>
+      <th>Cena/os</th>
+      <th>Źródło</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in offers %}
+    <tr>
+      <td>{{ item.offer.hotel_name }}</td>
+      <td>{{ item.offer.stars if item.offer.stars else "—" }}</td>
+      <td>{{ item.offer.rating if item.offer.rating else "—" }}</td>
+      <td>{{ item.offer.date_start }} – {{ item.offer.date_end }}</td>
+      <td>{{ item.offer.board if item.offer.board else "—" }}</td>
+      <td>{{ item.offer.departure_airport if item.offer.departure_airport else "—" }}</td>
+      <td>
+        {{ item.offer.current_price_per_person }} PLN
+        {% if item.trend %}
+          {% if item.trend.direction == "down" %}
+          <span class="trend trend-down">↓ {{ "%.0f"|format(item.trend.pct) }}%</span>
+          {% else %}
+          <span class="trend trend-up">↑ {{ "%.0f"|format(item.trend.pct) }}%</span>
+          {% endif %}
+        {% endif %}
+        <br><a href="/offers/{{ item.offer.offer_key }}/history">historia</a>
+      </td>
+      <td>{{ item.offer.source }}</td>
+      <td><a href="{{ item.offer.url }}" target="_blank" rel="noopener">Otwórz ofertę</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
