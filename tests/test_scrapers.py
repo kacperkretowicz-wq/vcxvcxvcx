@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date
 from pathlib import Path
 
@@ -5,6 +6,9 @@ import pytest
 
 from app.models import SearchCriteria
 from app.scrapers.base import (
+    RETRY_DELAYS_S,
+    HtmlCardScraper,
+    ScraperError,
     extract_float,
     normalize_board,
     parse_date_range,
@@ -245,3 +249,77 @@ def test_build_search_url_contains_criteria_for_all_scrapers(scraper_cls, base_u
     assert url.startswith(base_url)
     assert "kraj=Grecja" in url
     assert "region=Kreta" in url
+
+
+# --- retry z backoffem (Etap 8) ---------------------------------------------
+
+
+class _FlakyScraper(HtmlCardScraper):
+    source_name = "flaky"
+    base_url = "https://example.test"
+    card_selector = ".card"
+
+    def __init__(self, fail_times: int, error: Exception | None = None):
+        self.fail_times = fail_times
+        self.calls = 0
+        self._error = error or ScraperError("boom")
+
+    def build_search_url(self, criteria):
+        return self.base_url
+
+    def parse_card(self, card_html, criteria):
+        return None
+
+    async def fetch_html(self, url: str) -> str:
+        self.calls += 1
+        if self.calls <= self.fail_times:
+            raise self._error
+        return "<html></html>"
+
+
+@pytest.mark.asyncio
+async def test_fetch_html_with_retry_succeeds_after_transient_failures(monkeypatch):
+    sleeps = []
+
+    async def fake_sleep(seconds):
+        sleeps.append(seconds)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    scraper = _FlakyScraper(fail_times=2)
+    html = await scraper._fetch_html_with_retry("https://example.test")
+
+    assert html == "<html></html>"
+    assert scraper.calls == 3
+    assert sleeps == [2, 4]
+
+
+@pytest.mark.asyncio
+async def test_fetch_html_with_retry_gives_up_after_max_attempts(monkeypatch):
+    async def fake_sleep(seconds):
+        pass
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    scraper = _FlakyScraper(fail_times=10)
+    with pytest.raises(ScraperError):
+        await scraper._fetch_html_with_retry("https://example.test")
+
+    assert scraper.calls == len(RETRY_DELAYS_S) + 1
+
+
+@pytest.mark.asyncio
+async def test_fetch_html_with_retry_succeeds_first_try_no_sleep(monkeypatch):
+    sleeps = []
+
+    async def fake_sleep(seconds):
+        sleeps.append(seconds)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    scraper = _FlakyScraper(fail_times=0)
+    html = await scraper._fetch_html_with_retry("https://example.test")
+
+    assert html == "<html></html>"
+    assert scraper.calls == 1
+    assert sleeps == []

@@ -1,5 +1,6 @@
 """Wspólna infrastruktura dla wszystkich scraperów (sekcja 7 planu)."""
 
+import asyncio
 import glob
 import hashlib
 import logging
@@ -22,6 +23,7 @@ DEFAULT_USER_AGENT = (
 )
 REQUEST_TIMEOUT_S = 30.0
 MAX_RESULT_PAGES = 3
+RETRY_DELAYS_S = [2, 4, 8]
 
 
 class ScraperError(Exception):
@@ -114,12 +116,7 @@ class HtmlCardScraper(BaseScraper):
 
     async def search(self, criteria: SearchCriteria) -> list[Offer]:
         url = self.build_search_url(criteria)
-        try:
-            html = await self.fetch_html(url)
-        except ScraperError:
-            raise
-        except Exception as exc:
-            raise ScraperError(f"{self.source_name}: błąd pobierania strony {url}: {exc}") from exc
+        html = await self._fetch_html_with_retry(url)
 
         offers = self.parse_html(html, criteria)
         if not offers:
@@ -129,6 +126,35 @@ class HtmlCardScraper(BaseScraper):
                 self.source_name,
             )
         return offers
+
+    async def _fetch_html_with_retry(self, url: str) -> str:
+        """Ponawia pobranie strony przy błędach (sieciowych lub timeout na
+        selektorze) z rosnącym opóźnieniem: 2s, 4s, 8s (sekcja 8 planu)."""
+        last_error: ScraperError | None = None
+        total_attempts = len(RETRY_DELAYS_S) + 1
+
+        for attempt in range(1, total_attempts + 1):
+            try:
+                return await self.fetch_html(url)
+            except ScraperError as exc:
+                last_error = exc
+            except Exception as exc:
+                last_error = ScraperError(f"{self.source_name}: błąd pobierania strony {url}: {exc}")
+
+            if attempt <= len(RETRY_DELAYS_S):
+                delay = RETRY_DELAYS_S[attempt - 1]
+                logger.warning(
+                    "%s: próba %d/%d nieudana (%s) — ponawiam za %ds",
+                    self.source_name,
+                    attempt,
+                    total_attempts,
+                    last_error,
+                    delay,
+                )
+                await asyncio.sleep(delay)
+
+        assert last_error is not None
+        raise last_error
 
 
 def _select_optional(soup: BeautifulSoup, selector: str | None):

@@ -1,4 +1,3 @@
-import logging
 from contextlib import asynccontextmanager
 from datetime import date
 
@@ -8,12 +7,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import db, scheduler
+from app.config import settings
 from app.constants import BOARD_OPTIONS, COUNTRIES, DEPARTURE_AIRPORTS, REASON_LABELS
 from app.db import init_db
+from app.logging_config import configure_logging
 from app.models import SearchCriteria
 from app.scheduler import create_scheduler
 
-logging.basicConfig(level=logging.INFO)
+configure_logging(settings.log_path)
 
 
 @asynccontextmanager

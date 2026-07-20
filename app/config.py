@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     price_drop_threshold_pct: float = 10.0
     price_drop_renotify_pct: float = 5.0
     database_path: str = "data/app.db"
+    log_path: str = "data/app.log"
 
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
