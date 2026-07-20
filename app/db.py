@@ -291,6 +291,23 @@ def insert_deal(deal: Deal, db_path: str | None = None) -> bool:
         conn.close()
 
 
+def get_deal(
+    offer_key: str, profile_id: int, reason: str, db_path: str | None = None
+) -> dict | None:
+    conn = get_connection(db_path)
+    try:
+        row = conn.execute(
+            """
+            SELECT * FROM deals
+            WHERE offer_key = :offer_key AND profile_id = :profile_id AND reason = :reason
+            """,
+            {"offer_key": offer_key, "profile_id": profile_id, "reason": reason},
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
 def update_deal_for_renotify(
     offer_key: str, profile_id: int, reason: str, detail: str, db_path: str | None = None
 ) -> None:
