@@ -6,7 +6,7 @@ import logging
 import os
 import re
 from abc import ABC, abstractmethod
-from datetime import date
+from datetime import date, datetime
 
 from bs4 import BeautifulSoup
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
@@ -129,6 +129,86 @@ class HtmlCardScraper(BaseScraper):
                 self.source_name,
             )
         return offers
+
+
+def _select_optional(soup: BeautifulSoup, selector: str | None):
+    if not selector:
+        return None
+    return soup.select_one(selector)
+
+
+class GenericSelectorCardScraper(HtmlCardScraper):
+    """HtmlCardScraper z gotową implementacją parse_card sterowaną słownikiem
+    SELECTORS (wymagane klucze: hotel_name, price_per_person, date_range, link;
+    opcjonalne: stars, rating, board, region, departure_airport). Podklasa
+    dostarcza tylko SELECTORS, base_url, card_selector i build_search_url —
+    patrz wakacje_pl.py dla przykładu."""
+
+    SELECTORS: dict[str, str] = {}
+
+    def parse_card(self, card_html: str, criteria: SearchCriteria) -> Offer | None:
+        soup = BeautifulSoup(card_html, "html.parser")
+        sel = self.SELECTORS
+
+        hotel_el = soup.select_one(sel["hotel_name"])
+        price_el = soup.select_one(sel["price_per_person"])
+        dates_el = soup.select_one(sel["date_range"])
+        link_el = soup.select_one(sel["link"])
+
+        if not (hotel_el and price_el and dates_el and link_el):
+            return None
+
+        hotel_name = hotel_el.get_text(strip=True)
+        try:
+            price_per_person = parse_price_pln(price_el.get_text(strip=True))
+            date_start, date_end = parse_date_range(dates_el.get_text(strip=True))
+        except ValueError:
+            logger.warning(
+                "%s: nie udało się sparsować ceny/dat oferty %r", self.source_name, hotel_name
+            )
+            return None
+
+        stars_el = _select_optional(soup, sel.get("stars"))
+        rating_el = _select_optional(soup, sel.get("rating"))
+        board_el = _select_optional(soup, sel.get("board"))
+        region_el = _select_optional(soup, sel.get("region"))
+        airport_el = _select_optional(soup, sel.get("departure_airport"))
+
+        url = link_el.get("href", "") or ""
+        if url.startswith("/"):
+            url = self.base_url + url
+
+        board_raw = board_el.get_text(strip=True) if board_el else None
+        airport = airport_el.get_text(strip=True) if airport_el else criteria.departure_airport
+
+        party_size = max(criteria.adults + criteria.children, 1)
+        price_total = price_per_person * party_size
+
+        external_id = self.make_external_id(
+            hotel_name,
+            date_start.isoformat(),
+            date_end.isoformat(),
+            board_raw or "",
+            airport or "",
+        )
+
+        return Offer(
+            source=self.source_name,
+            external_id=external_id,
+            hotel_name=hotel_name,
+            country=criteria.country,
+            region=region_el.get_text(strip=True) if region_el else criteria.region,
+            stars=extract_float(stars_el.get_text(strip=True)) if stars_el else None,
+            rating=extract_float(rating_el.get_text(strip=True)) if rating_el else None,
+            board=normalize_board(board_raw),
+            departure_airport=airport,
+            date_start=date_start,
+            date_end=date_end,
+            price_total=price_total,
+            price_per_person=price_per_person,
+            url=url,
+            scraped_at=datetime.now(),
+        )
 
 
 # ---------------------------------------------------------------------------

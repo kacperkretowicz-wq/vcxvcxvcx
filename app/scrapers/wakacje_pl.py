@@ -6,9 +6,10 @@ Ten moduł powstał w środowisku bez dostępu do ogólnego internetu (polityka
 sieciowa środowiska blokowała ruch poza pypi/npm/github/anthropic.com),
 więc nie dało się przejść procedury z PLAN.md sekcja 7.2 (podgląd karty
 Network w DevTools na żywej stronie wakacje.pl). Cała logika parsowania
-tekstu (ceny, daty, gwiazdki, ocena, normalizacja wyżywienia) jest w pełni
+tekstu (ceny, daty, gwiazdki, ocena, normalizacja wyżywienia) — w
+GenericSelectorCardScraper w app/scrapers/base.py — jest w pełni
 zaimplementowana i przetestowana (zob. tests/test_scrapers.py), ale
-SELECTORS i SEARCH_URL_TEMPLATE poniżej są PRZYBLIŻENIEM i wymagają
+SELECTORS i URL wyszukiwania poniżej są PRZYBLIŻENIEM i wymagają
 weryfikacji/poprawek na żywej stronie, zanim scraper zacznie zwracać
 prawdziwe wyniki. Snapshot użyty w testach
 (snapshots/wakacje_pl/sample_search.html) jest SYNTETYCZNY — napisany
@@ -34,21 +35,10 @@ Aby dokończyć ten scraper:
 import argparse
 import asyncio
 import logging
-from datetime import datetime
 from urllib.parse import urlencode
 
-from bs4 import BeautifulSoup
-
-from app.models import Offer, SearchCriteria
-from app.scrapers.base import (
-    HtmlCardScraper,
-    extract_float,
-    normalize_board,
-    parse_date_range,
-    parse_price_pln,
-)
-
-logger = logging.getLogger(__name__)
+from app.models import SearchCriteria
+from app.scrapers.base import GenericSelectorCardScraper
 
 # TODO: ZWERYFIKOWAĆ na żywej stronie (PLAN.md sekcja 7.2). Każdy selektor to
 # lista alternatyw (przecinek = CSS "or") — parser bierze pierwsze trafienie.
@@ -66,10 +56,11 @@ SELECTORS = {
 }
 
 
-class WakacjePlScraper(HtmlCardScraper):
+class WakacjePlScraper(GenericSelectorCardScraper):
     source_name = "wakacje_pl"
     base_url = "https://www.wakacje.pl"
     card_selector = SELECTORS["card"]
+    SELECTORS = SELECTORS
     request_delay_s = 7.0
 
     def build_search_url(self, criteria: SearchCriteria) -> str:
@@ -88,69 +79,6 @@ class WakacjePlScraper(HtmlCardScraper):
         if criteria.departure_airport:
             params["lotnisko"] = criteria.departure_airport
         return f"{self.base_url}/szukaj?{urlencode(params)}"
-
-    def parse_card(self, card_html: str, criteria: SearchCriteria) -> Offer | None:
-        soup = BeautifulSoup(card_html, "html.parser")
-
-        hotel_el = soup.select_one(SELECTORS["hotel_name"])
-        price_el = soup.select_one(SELECTORS["price_per_person"])
-        dates_el = soup.select_one(SELECTORS["date_range"])
-        link_el = soup.select_one(SELECTORS["link"])
-
-        if not (hotel_el and price_el and dates_el and link_el):
-            return None
-
-        hotel_name = hotel_el.get_text(strip=True)
-        try:
-            price_per_person = parse_price_pln(price_el.get_text(strip=True))
-            date_start, date_end = parse_date_range(dates_el.get_text(strip=True))
-        except ValueError:
-            logger.warning(
-                "wakacje_pl: nie udało się sparsować ceny/dat oferty %r", hotel_name
-            )
-            return None
-
-        stars_el = soup.select_one(SELECTORS["stars"])
-        rating_el = soup.select_one(SELECTORS["rating"])
-        board_el = soup.select_one(SELECTORS["board"])
-        region_el = soup.select_one(SELECTORS["region"])
-        airport_el = soup.select_one(SELECTORS["departure_airport"])
-
-        url = link_el.get("href", "") or ""
-        if url.startswith("/"):
-            url = self.base_url + url
-
-        board_raw = board_el.get_text(strip=True) if board_el else None
-        airport = airport_el.get_text(strip=True) if airport_el else criteria.departure_airport
-
-        party_size = max(criteria.adults + criteria.children, 1)
-        price_total = price_per_person * party_size
-
-        external_id = self.make_external_id(
-            hotel_name,
-            date_start.isoformat(),
-            date_end.isoformat(),
-            board_raw or "",
-            airport or "",
-        )
-
-        return Offer(
-            source=self.source_name,
-            external_id=external_id,
-            hotel_name=hotel_name,
-            country=criteria.country,
-            region=region_el.get_text(strip=True) if region_el else criteria.region,
-            stars=extract_float(stars_el.get_text(strip=True)) if stars_el else None,
-            rating=extract_float(rating_el.get_text(strip=True)) if rating_el else None,
-            board=normalize_board(board_raw),
-            departure_airport=airport,
-            date_start=date_start,
-            date_end=date_end,
-            price_total=price_total,
-            price_per_person=price_per_person,
-            url=url,
-            scraped_at=datetime.now(),
-        )
 
 
 async def _run_cli(criteria: SearchCriteria) -> None:

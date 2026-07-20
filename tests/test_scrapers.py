@@ -10,6 +10,10 @@ from app.scrapers.base import (
     parse_date_range,
     parse_price_pln,
 )
+from app.scrapers.coraltravel import CoralTravelScraper
+from app.scrapers.itaka import ItakaScraper
+from app.scrapers.lastminuter import LastminuterScraper
+from app.scrapers.tui import TuiScraper
 from app.scrapers.wakacje_pl import WakacjePlScraper
 
 SNAPSHOT_DIR = Path(__file__).parent.parent / "snapshots"
@@ -164,3 +168,80 @@ def test_wakacje_pl_build_search_url_contains_criteria():
     assert "region=Kreta" in url
     assert "2026-09-01" in url
     assert "2026-09-30" in url
+
+
+# --- pozostałe scrapery (Etap 7) — parsery na syntetycznych snapshotach ----
+
+
+def test_itaka_parse_html_snapshot():
+    html = (SNAPSHOT_DIR / "itaka" / "sample_search.html").read_text(encoding="utf-8")
+    scraper = ItakaScraper()
+    offers = scraper.parse_html(html, make_criteria(country="Turcja"))
+
+    assert len(offers) == 2
+    first = offers[0]
+    assert first.source == "itaka"
+    assert first.hotel_name == "Hotel Golden Sun"
+    assert first.region == "Antalya"
+    assert first.board == "AI"
+    assert first.price_per_person == 3210
+    assert first.url == "https://www.itaka.pl/oferta/hotel-golden-sun-11111"
+
+
+def test_tui_parse_html_snapshot():
+    html = (SNAPSHOT_DIR / "tui" / "sample_search.html").read_text(encoding="utf-8")
+    scraper = TuiScraper()
+    offers = scraper.parse_html(html, make_criteria(country="Egipt"))
+
+    assert len(offers) == 2
+    first = offers[0]
+    assert first.source == "tui"
+    assert first.hotel_name == "Hotel White Sands"
+    assert first.board == "HB"  # "2 posiłki" -> HB
+    assert first.price_per_person == 2980
+    assert first.url == "https://www.tui.pl/oferta/hotel-white-sands-33333"
+
+
+def test_coraltravel_parse_html_snapshot():
+    html = (SNAPSHOT_DIR / "coraltravel" / "sample_search.html").read_text(encoding="utf-8")
+    scraper = CoralTravelScraper()
+    offers = scraper.parse_html(html, make_criteria(country="Turcja"))
+
+    assert len(offers) == 2
+    first = offers[0]
+    assert first.source == "coraltravel"
+    assert first.hotel_name == "Hotel Crystal Bay"
+    assert first.board == "AI"
+    assert first.price_per_person == 3650
+    second = offers[1]
+    assert second.board == "BB"  # "Śniadania" -> BB
+
+
+def test_lastminuter_parse_html_snapshot():
+    html = (SNAPSHOT_DIR / "lastminuter" / "sample_search.html").read_text(encoding="utf-8")
+    scraper = LastminuterScraper()
+    offers = scraper.parse_html(html, make_criteria(country="Turcja"))
+
+    assert len(offers) == 2
+    first = offers[0]
+    assert first.source == "lastminuter"
+    assert first.hotel_name == "Hotel Last Chance Resort"
+    assert first.price_per_person == 2199
+    assert first.url == "https://www.lastminuter.pl/oferta/hotel-last-chance-77777"
+
+
+@pytest.mark.parametrize(
+    "scraper_cls,base_url",
+    [
+        (ItakaScraper, "https://www.itaka.pl"),
+        (TuiScraper, "https://www.tui.pl"),
+        (CoralTravelScraper, "https://www.coraltravel.pl"),
+        (LastminuterScraper, "https://www.lastminuter.pl"),
+    ],
+)
+def test_build_search_url_contains_criteria_for_all_scrapers(scraper_cls, base_url):
+    scraper = scraper_cls()
+    url = scraper.build_search_url(make_criteria(region="Kreta", departure_airport="Warszawa"))
+    assert url.startswith(base_url)
+    assert "kraj=Grecja" in url
+    assert "region=Kreta" in url
