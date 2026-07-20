@@ -1,0 +1,48 @@
+<!--
+  UWAGA: To jest SYNTETYCZNY (ręcznie napisany) przykład struktury strony,
+  stworzony wyłącznie po to, by przetestować logikę parsera w
+  app/scrapers/wakacje_pl.py. NIE jest to prawdziwy zrzut strony wakacje.pl.
+  Przed użyciem produkcyjnym zastąp ten plik prawdziwym zrzutem HTML/JSON
+  pobranym zgodnie z procedurą z PLAN.md sekcja 7.2 i zaktualizuj SELECTORS
+  w wakacje_pl.py, jeśli prawdziwa struktura się różni.
+-->
+<html lang="pl">
+<body>
+  <div class="search-results">
+    <div class="offer-tile">
+      <a class="offer-tile__link" href="/oferta/hotel-blue-bay-12345">
+        <span class="offer-tile__hotel-name">Hotel Blue Bay</span>
+      </a>
+      <span class="offer-tile__stars">4*</span>
+      <span class="offer-tile__rating">8,6/10</span>
+      <span class="offer-tile__board">All Inclusive</span>
+      <span class="offer-tile__region">Kreta</span>
+      <span class="offer-tile__dates">12.09.2026 - 19.09.2026</span>
+      <span class="offer-tile__airport">Warszawa</span>
+      <span class="offer-tile__price">3 444 zł/os.</span>
+    </div>
+
+    <div class="offer-tile">
+      <a class="offer-tile__link" href="https://www.wakacje.pl/oferta/hotel-sunny-hill-67890">
+        <span class="offer-tile__hotel-name">Hotel Sunny Hill</span>
+      </a>
+      <span class="offer-tile__stars">5*</span>
+      <span class="offer-tile__rating">9,1/10</span>
+      <span class="offer-tile__board">All Inclusive</span>
+      <span class="offer-tile__region">Rodos</span>
+      <span class="offer-tile__dates">14.09.2026 - 21.09.2026</span>
+      <span class="offer-tile__airport">Kraków</span>
+      <span class="offer-tile__price">4 980 zł/os.</span>
+    </div>
+
+    <div class="offer-tile">
+      <!-- Karta z brakującą ceną - parser powinien ją pominąć, nie wywalić się -->
+      <a class="offer-tile__link" href="/oferta/broken-card-99999">
+        <span class="offer-tile__hotel-name">Hotel Bez Ceny</span>
+      </a>
+      <span class="offer-tile__stars">3*</span>
+      <span class="offer-tile__dates">10.09.2026 - 17.09.2026</span>
+    </div>
+  </div>
+</body>
+</html>
